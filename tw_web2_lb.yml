@@ -1,0 +1,100 @@
+Description:
+
+    CFN template to provision a Sample application using ASG
+
+Resources:
+
+   TWWebLB:
+     Type : "AWS::ElasticLoadBalancing::LoadBalancer"
+     Properties:
+       Listeners:
+         - InstancePort: 80
+           InstanceProtocol: HTTP
+           LoadBalancerPort: 80
+           Protocol: HTTP 
+       LoadBalancerName: TW-Web-LB
+       SecurityGroups: 
+         - sg-05f80b781fc38ef5b
+       AvailabilityZones:
+         Fn::GetAZs: ""
+         
+   TWWebLC:
+     Type: AWS::AutoScaling::LaunchConfiguration
+     Metadata:
+       "AWS::CloudFormation::Init":
+         configSets:
+            myconf:
+               - "set1"
+               - "set2"
+               - "set3"  
+         set1:
+           services:
+             sysvinit:
+               httpd:
+                 enabled: "true"
+                 ensureRunning: "true"
+      
+         set2: 
+           commands:
+             download_from_s3:
+               command: "aws s3 sync s3://sujkub8 /tmp"
+             install ansible:
+               command: "~/.local/bin/pip install ansible"
+
+         set3:
+           commands:
+             run playbook:
+               command: "/usr/bin/ansible-playbook  setup_mediawiki.yml"
+               cwd: "/tmp"
+     Properties: 
+       AssociatePublicIpAddress: True
+       ImageId: ami-0e0ff550130b28343
+       InstanceType: t2.micro
+       KeyName: sujithmelur3
+       IamInstanceProfile: s3_admin
+       LaunchConfigurationName: TW-CFN-LaunchConfiguration
+       SecurityGroups:
+         - sg-05f80b781fc38ef5b
+       UserData: !Base64
+         'Fn::Join':
+           - ""
+           - - |
+              #!/bin/bash -v
+             - |
+               yum install -y httpd php php-mysql php-gd php-xml maria*
+             - export CFN_StackId=
+             - !Ref 'AWS::StackId'
+             - |+
+
+             - export CFN_StackName=
+             - !Ref 'AWS::StackName'
+             - |+
+    
+             - export CFN_Region=
+             - !Ref 'AWS::Region'
+             - |+
+             
+             - '/opt/aws/bin/cfn-init '
+             - '  --stack ${CFN_StackId} '
+             - '  --resource TWWebLC '
+             - '  --region ${CFN_Region} '
+             - |2
+                  --configsets myconf
+
+   TestASG:
+     Type: AWS::AutoScaling::AutoScalingGroup
+     Properties: 
+       AutoScalingGroupName: TWASG
+       LoadBalancerNames:
+         - !Ref TWWebLB
+       DesiredCapacity: 1
+       LaunchConfigurationName: !Ref TWWebLC
+       MaxSize: 2
+       MinSize: 1
+       Tags: 
+         - Key: Name
+           Value: Web-asg
+           PropagateAtLaunch: "true"  
+       AvailabilityZones:
+         Fn::GetAZs: ""        
+    

@@ -1,0 +1,32 @@
+---
+
+ - hosts: localhost
+   tasks:
+     - name: Getting the tar file
+       unarchive:
+         src: https://releases.wikimedia.org/mediawiki/1.33/mediawiki-1.33.0.tar.gz
+         dest: /opt
+         remote_src: yes
+
+     - name: Change Ownership
+       file:
+         path: /opt/mediawiki-1.33.0
+         state: directory
+         recurse: yes
+         owner: apache
+         group: apache
+
+
+     - name: Creating Softlink
+       file:
+         src: /opt/mediawiki-1.33.0
+         dest: /var/www/html/mediawiki
+         state: link
+         owner: apache
+         group: apache
+
+
+     - name: Restarting Httpd
+       service:
+         name: httpd
+         state: restarted

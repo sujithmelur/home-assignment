@@ -36,7 +36,7 @@ Resources:
        AssociatePublicIpAddress: True
        ImageId: ami-0b88ef5bfc4c38e93
        InstanceType: t2.micro
-       KeyName: sujithmelur3
+       KeyName: suj-sing
        IamInstanceProfile: s3_admin
        LaunchConfigurationName: TW-DB-LaunchConfiguration
        SecurityGroups:
